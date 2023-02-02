@@ -3,7 +3,7 @@ import 'package:english_words/english_words.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:shared_preferences/shared_preferences.dart';
 
 
 
@@ -22,7 +22,7 @@ class MyApp extends StatelessWidget {
         title: 'Namer App',
         theme: ThemeData(
           useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: Color.fromARGB(255, 235, 2, 252)),
+          colorScheme: ColorScheme.fromSeed(seedColor: Color.fromARGB(255, 252, 2, 189)),
         ),
         home: MyHomePage(),
       ),
@@ -32,28 +32,51 @@ class MyApp extends StatelessWidget {
 
 class MyAppState extends ChangeNotifier {
   var current = WordPair.random();
+  var history = <WordPair>[];
+
+  GlobalKey? historyListKey;
 
   void getNext(){
+    history.insert(0, current);
+    var animatedList = historyListKey?.currentState as AnimatedListState?;
+    animatedList?.insertItem(0);
     current = WordPair.random();
     notifyListeners();
   }
   var favorites = <WordPair>[];
+  // List<String> myList = List<String>();
+
+  // getFavorite() async {
+  //   SharedPreferences pref = await SharedPreferences.getInstance();
+  //   List<String>? favoriteList = pref.getStringList('favoriteWord');
+  //   return favoriteList;
+  // }
+
+  // setFavorite() async{
+  //   SharedPreferences pref = await SharedPreferences.getInstance();
+  //   pref.setString('favoriteWord', current);
+  // }
 
 
-
-  void toggleFavorite() async{
+  void toggleFavorite([WordPair? pair]) {
     // final prefs = await SharedPreferences.getInstance();
     // await prefs.getString('favorites');
-    if (favorites.contains(current)) {
-      favorites.remove(current);
+    pair = pair ?? current;
+    if (favorites.contains(pair)) {
+      favorites.remove(pair);
       
     } else {
-      favorites.add(current);
+      favorites.add(pair);
       // await prefs.setString('favorites','current');
       
     }
     notifyListeners();
     print(favorites);
+  }
+
+  void removeFavorite(WordPair pair) {
+    favorites.remove(pair);
+    notifyListeners();
   }
 }
 
@@ -68,7 +91,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-
+  var colorScheme = Theme.of(context).colorScheme;
 
   Widget page;
   switch (selectedIndex) {
@@ -82,44 +105,76 @@ class _MyHomePageState extends State<MyHomePage> {
       throw UnimplementedError('no widget for $selectedIndex');
   }
 
+    var mainArea = ColoredBox(
+      color: colorScheme.surfaceVariant,
+      child: AnimatedSwitcher(
+        duration: Duration(milliseconds: 200),
+        child: page,
+      ),
+    );
 
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Scaffold(
-          body: Row(
-            children: [
-              SafeArea(
-                child: NavigationRail(
-                  extended: constraints.maxWidth >= 600,
-                  destinations: [
-                    NavigationRailDestination(
-                      icon: Icon(Icons.home),
-                      label: Text('Home'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.favorite),
-                      label: Text('Favorites'),
-                    ),
-                  ],
-                  selectedIndex: selectedIndex,
-                  onDestinationSelected: (value) {
-                    setState(() {
-                      selectedIndex = value;
-                    });
-                  },
+    return Scaffold(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 450) {
+            // Use a more mobile-friendly layout with BottomNavigationBar
+            // on narrow screens.
+            return Column(
+              children: [
+                Expanded(child: mainArea),
+                SafeArea(
+                  child: BottomNavigationBar(
+                    items: [
+                      BottomNavigationBarItem(
+                        icon: Icon(Icons.home),
+                        label: 'Home',
+                      ),
+                      BottomNavigationBarItem(
+                        icon: Icon(Icons.favorite),
+                        label: 'Favorites',
+                      ),
+                    ],
+                    currentIndex: selectedIndex,
+                    onTap: (value) {
+                      setState(() {
+                        selectedIndex = value;
+                      });
+                    },
+                  ),
+                )
+              ],
+            );
+          } else {
+            return Row(
+              children: [
+                SafeArea(
+                  child: NavigationRail(
+                    extended: constraints.maxWidth >= 600,
+                    destinations: [
+                      NavigationRailDestination(
+                        icon: Icon(Icons.home),
+                        label: Text('Home'),
+                      ),
+                      NavigationRailDestination(
+                        icon: Icon(Icons.favorite),
+                        label: Text('Favorites'),
+                      ),
+                    ],
+                    selectedIndex: selectedIndex,
+                    onDestinationSelected: (value) {
+                      setState(() {
+                        selectedIndex = value;
+                      });
+                    },
+                  ),
                 ),
-              ),
-              Expanded(
-                child: Container(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  child: page,
-                ),
-              ),
-            ],
-          ),
-        );
-      }
+                Expanded(child: mainArea),
+              ],
+            );
+        }
+        },
+        
+      ),
     );
   }
 }
